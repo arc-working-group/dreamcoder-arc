@@ -25,6 +25,10 @@ Size = NewType("Size", Tuple[int, int])
 
 tcount = baseType("count")
 Count = NewType("Count", int)
+
+SOLVERS_PROGRAM_PATH = os.path.join(os.path.dirname(__file__), "../../../", "solvers/program.ml")
+AUTO_GEN_START = '(* AUTO GEN COMMENT START *)'
+AUTO_GEN_END = '(* END AUTO GEN COMMENT END *)'
     
 tgrid = baseType("grid") # Any grid. Position is always included
 class Grid():
@@ -223,11 +227,17 @@ class DSL:
     def generate_ocaml_primitives(self):
         primitives = list(self.primitives.values())
 
-        with open("solvers/program.ml", "r") as f:
+        with open(SOLVERS_PROGRAM_PATH, "r") as f:
             contents = f.readlines()
-
-        start_ix = min([i for i in range(len(contents)) if contents[i][0:7] == '(* AUTO'])
-        end_ix = min([i for i in range(len(contents)) if contents[i][0:11] == '(* END AUTO'])
+            file_content = '\n'.join(contents)
+            if AUTO_GEN_START not in file_content:
+                if AUTO_GEN_END in file_content:
+                    raise Error('Auto generated start comment in file contents but the end is not. This makes no sense! Panicking.')
+            contents += [AUTO_GEN_START, AUTO_GEN_END]
+            
+        
+        start_ix = min([i for i in range(len(contents)) if AUTO_GEN_START in contents[i]])
+        end_ix = min([i for i in range(len(contents)) if AUTO_GEN_END in contents[i]])
 
         non_auto_contents = contents[0:start_ix+1] + contents[end_ix:]
         # get the existing primitive names. We won't auto-create any primitives
@@ -243,7 +253,7 @@ class DSL:
 
         contents = contents[0:start_ix+1] + lines + contents[end_ix:]
 
-        with open("solvers/program.ml", "w") as f:
+        with open(SOLVERS_PROGRAM_PATH, "w") as f:
             f.write(''.join(contents))
 
 dsl = DSL(typemap, verbose=False)
@@ -792,7 +802,7 @@ def ic_splitall(g: Grid) -> List[Grid]:
             ret += [g.newgrid(g.grid[obj], offset=(obj[0].start, obj[1].start)) for obj in objects]
     return ret
 
-struct8 = np.array([[1, 1, 1], [1, 1, 1], [1, 1, 1]], dtype=np.int)
+struct8 = np.array([[1, 1, 1], [1, 1, 1], [1, 1, 1]], dtype=np.int8)
 @dsl.primitive
 def split8(g: Grid) -> List[Grid]:
     """
